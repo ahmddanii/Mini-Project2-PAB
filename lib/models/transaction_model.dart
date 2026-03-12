@@ -1,9 +1,9 @@
 class TransactionModel {
-  String id;
-  String title;
-  double amount;
-  String category;
-  String date;
+  final int id;
+  final String title;
+  final double amount;
+  final String category;
+  final String date;
 
   TransactionModel({
     required this.id,
@@ -12,4 +12,14 @@ class TransactionModel {
     required this.category,
     required this.date,
   });
+
+  factory TransactionModel.fromJson(Map<String, dynamic> json) {
+    return TransactionModel(
+      id: json['id'],
+      title: json['title'],
+      amount: (json['amount'] as num).toDouble(),
+      category: json['category'],
+      date: json['date'],
+    );
+  }
 }

@@ -1,34 +1,63 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../providers/transaction_provider.dart';
+import '../services/supabase_service.dart';
+import '../models/transaction_model.dart';
 import 'add_transaction_page.dart';
 import 'edit_transaction_page.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final supabase = SupabaseService.client;
+
+  List<TransactionModel> transactions = [];
+
+  Future<void> fetchTransactions() async {
+    final data = await supabase.from('transactions').select();
+
+    setState(() {
+      transactions = (data as List)
+          .map((trx) => TransactionModel.fromJson(trx))
+          .toList();
+    });
+  }
+
+  Future<void> deleteTransaction(int id) async {
+    await supabase.from('transactions').delete().eq('id', id);
+    fetchTransactions();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchTransactions();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<TransactionProvider>(context);
     final formatRupiah = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
       decimalDigits: 0,
     );
 
-    final saldo = provider.saldo;
-
     double totalIncome = 0;
     double totalExpense = 0;
 
-    for (var trx in provider.transactions) {
+    for (var trx in transactions) {
       if (trx.category == "Pemasukan") {
         totalIncome += trx.amount;
       } else {
         totalExpense += trx.amount;
       }
     }
+
+    final saldo = totalIncome - totalExpense;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F9),
@@ -48,7 +77,6 @@ class HomePage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 🔥 SUMMARY CARD
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -99,9 +127,8 @@ class HomePage extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            // 🔥 LIST TRANSAKSI
             Expanded(
-              child: provider.transactions.isEmpty
+              child: transactions.isEmpty
                   ? const Center(
                       child: Text(
                         "Belum ada transaksi",
@@ -109,20 +136,22 @@ class HomePage extends StatelessWidget {
                       ),
                     )
                   : ListView.builder(
-                      itemCount: provider.transactions.length,
+                      itemCount: transactions.length,
                       itemBuilder: (context, index) {
-                        final trx = provider.transactions[index];
+                        final trx = transactions[index];
                         final isIncome = trx.category == "Pemasukan";
 
                         return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
+                          onTap: () async {
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) =>
                                     EditTransactionPage(transaction: trx),
                               ),
                             );
+
+                            fetchTransactions();
                           },
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -191,8 +220,8 @@ class HomePage extends StatelessWidget {
                                         size: 20,
                                         color: Colors.grey,
                                       ),
-                                      onPressed: () {
-                                        provider.deleteTransaction(trx.id);
+                                      onPressed: () async {
+                                        await deleteTransaction(trx.id);
                                       },
                                     ),
                                   ],
@@ -208,15 +237,16 @@ class HomePage extends StatelessWidget {
         ),
       ),
 
-      // 🔥 ADD BUTTON
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF1ABC9C),
         child: const Icon(Icons.add),
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const AddTransactionPage()),
           );
+
+          fetchTransactions();
         },
       ),
     );

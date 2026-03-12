@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
-import '../providers/transaction_provider.dart';
-import '../models/transaction_model.dart';
+import '../services/supabase_service.dart';
 
 class AddTransactionPage extends StatefulWidget {
   const AddTransactionPage({super.key});
@@ -17,18 +14,87 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   final _amountController = TextEditingController();
   final _dateController = TextEditingController();
 
+  final supabase = SupabaseService.client;
+
   String _selectedCategory = "Pemasukan";
+
+  double currentSaldo = 0;
+
+  Future<void> getSaldo() async {
+    final data = await supabase.from('transactions').select();
+
+    double income = 0;
+    double expense = 0;
+
+    for (var trx in data) {
+      if (trx['category'] == "Pemasukan") {
+        income += trx['amount'];
+      } else {
+        expense += trx['amount'];
+      }
+    }
+
+    setState(() {
+      currentSaldo = income - expense;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    getSaldo();
+  }
+
+  Future<void> addTransaction() async {
+    final amount = double.tryParse(_amountController.text) ?? 0;
+
+    if (_titleController.text.isEmpty ||
+        amount <= 0 ||
+        _dateController.text.isEmpty)
+      return;
+
+    if (_selectedCategory == "Pengeluaran" && amount > currentSaldo) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Saldo tidak cukup untuk pengeluaran!")),
+      );
+      return;
+    }
+
+    await supabase.from('transactions').insert({
+      'title': _titleController.text,
+      'amount': amount,
+      'category': _selectedCategory,
+      'date': _dateController.text,
+    });
+
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _dateController.text = DateFormat('yyyy-MM-dd').format(picked);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<TransactionProvider>(context);
     final formatRupiah = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
       decimalDigits: 0,
     );
 
-    final currentSaldo = provider.saldo;
     final inputAmount = double.tryParse(_amountController.text) ?? 0;
 
     double previewSaldo = currentSaldo;
@@ -39,39 +105,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       previewSaldo -= inputAmount;
     }
 
-    void _submit() {
-      if (_titleController.text.isEmpty ||
-          inputAmount <= 0 ||
-          _dateController.text.isEmpty)
-        return;
-
-      if (_selectedCategory == "Pengeluaran" && inputAmount > currentSaldo) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Saldo tidak cukup untuk pengeluaran!")),
-        );
-        return;
-      }
-
-      provider.addTransaction(
-        TransactionModel(
-          id: const Uuid().v4(),
-          title: _titleController.text,
-          amount: inputAmount,
-          category: _selectedCategory,
-          date: _dateController.text,
-        ),
-      );
-
-      Navigator.pop(context);
-    }
-
     InputDecoration inputStyle(String label) {
       return InputDecoration(
         labelText: label,
         filled: true,
         fillColor: Colors.grey[100],
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
         ),
       );
@@ -82,34 +122,36 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: const Color(0xFF1ABC9C),
-        title: const Text("Tambah Transaksi"),
+        title: const Text(
+          "Tambah Transaksi",
+          style: TextStyle(color: Colors.white),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: ListView(
           children: [
-            // SALDO SAAT INI
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFF1ABC9C), Color(0xFF16A085)],
                 ),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     "Saldo Saat Ini",
-                    style: TextStyle(color: Colors.white70),
+                    style: TextStyle(color: Colors.white),
                   ),
                   const SizedBox(height: 5),
                   Text(
                     formatRupiah.format(currentSaldo),
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 22,
+                      fontSize: 26,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -123,14 +165,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               controller: _titleController,
               decoration: inputStyle("Nama Transaksi"),
             ),
+
             const SizedBox(height: 15),
 
             TextField(
               controller: _amountController,
               keyboardType: TextInputType.number,
-              decoration: inputStyle("Jumlah"),
+              decoration: inputStyle("Jumlah Transaksi"),
               onChanged: (_) => setState(() {}),
             ),
+
             const SizedBox(height: 15),
 
             Container(
@@ -166,18 +210,21 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
             TextField(
               controller: _dateController,
-              decoration: inputStyle("Tanggal"),
+              readOnly: true,
+              onTap: _pickDate,
+              decoration: inputStyle(
+                "Tanggal",
+              ).copyWith(suffixIcon: const Icon(Icons.calendar_today)),
             ),
 
             const SizedBox(height: 25),
 
-            // PREVIEW SALDO
             Container(
               padding: const EdgeInsets.all(15),
               decoration: BoxDecoration(
                 color: previewSaldo >= 0
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.red.withOpacity(0.1),
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(15),
               ),
               child: Row(
@@ -197,25 +244,28 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
             const SizedBox(height: 30),
 
-            // BUTTON
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFF1ABC9C), Color(0xFF16A085)],
                 ),
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
                 ),
-                onPressed: _submit,
+                onPressed: addTransaction,
                 child: const Text(
                   "Simpan Transaksi",
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),

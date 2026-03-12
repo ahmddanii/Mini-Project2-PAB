@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../providers/transaction_provider.dart';
 import '../models/transaction_model.dart';
+import '../services/supabase_service.dart';
 
 class EditTransactionPage extends StatefulWidget {
   final TransactionModel transaction;
@@ -19,6 +18,8 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
   late TextEditingController _dateController;
   late String _selectedCategory;
 
+  final supabase = SupabaseService.client;
+
   @override
   void initState() {
     super.initState();
@@ -30,16 +31,52 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     _selectedCategory = widget.transaction.category;
   }
 
+  Future<void> updateTransaction() async {
+    final amount = double.tryParse(_amountController.text) ?? 0;
+
+    if (_titleController.text.isEmpty ||
+        amount <= 0 ||
+        _dateController.text.isEmpty) {
+      return;
+    }
+
+    await supabase
+        .from('transactions')
+        .update({
+          'title': _titleController.text,
+          'amount': amount,
+          'category': _selectedCategory,
+          'date': _dateController.text,
+        })
+        .eq('id', widget.transaction.id);
+
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _dateController.text = DateFormat('yyyy-MM-dd').format(picked);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<TransactionProvider>(context);
     final formatRupiah = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
       decimalDigits: 0,
     );
-
-    final currentSaldo = provider.saldo;
 
     final inputAmount = double.tryParse(_amountController.text) ?? 0;
 
@@ -55,26 +92,6 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
       );
     }
 
-    void _submit() {
-      if (_titleController.text.isEmpty ||
-          inputAmount <= 0 ||
-          _dateController.text.isEmpty)
-        return;
-
-      provider.updateTransaction(
-        widget.transaction.id,
-        TransactionModel(
-          id: widget.transaction.id,
-          title: _titleController.text,
-          amount: inputAmount,
-          category: _selectedCategory,
-          date: _dateController.text,
-        ),
-      );
-
-      Navigator.pop(context);
-    }
-
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F9),
       appBar: AppBar(
@@ -86,7 +103,6 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
         padding: const EdgeInsets.all(20),
         child: ListView(
           children: [
-            // SALDO SAAT INI
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -95,21 +111,12 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
                 ),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Saldo Saat Ini",
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 5),
                   Text(
-                    formatRupiah.format(currentSaldo),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    "Edit data transaksi",
+                    style: TextStyle(color: Colors.white, fontSize: 18),
                   ),
                 ],
               ),
@@ -126,7 +133,9 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
             TextField(
               controller: _amountController,
               keyboardType: TextInputType.number,
-              decoration: inputStyle("Jumlah"),
+              decoration: inputStyle(
+                "Jumlah Transaksi",
+              ).copyWith(prefixText: formatRupiah.currencySymbol),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 15),
@@ -164,7 +173,11 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
 
             TextField(
               controller: _dateController,
-              decoration: inputStyle("Tanggal"),
+              readOnly: true,
+              onTap: _pickDate,
+              decoration: inputStyle(
+                "Tanggal",
+              ).copyWith(suffixIcon: const Icon(Icons.calendar_today)),
             ),
 
             const SizedBox(height: 30),
@@ -183,7 +196,7 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
                   shadowColor: Colors.transparent,
                   padding: const EdgeInsets.symmetric(vertical: 15),
                 ),
-                onPressed: _submit,
+                onPressed: updateTransaction,
                 child: const Text(
                   "Update Transaksi",
                   style: TextStyle(fontSize: 16),
