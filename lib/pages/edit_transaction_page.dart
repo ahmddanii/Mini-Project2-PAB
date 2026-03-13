@@ -78,7 +78,7 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
       decimalDigits: 0,
     );
 
-    final inputAmount = double.tryParse(_amountController.text) ?? 0;
+    // final inputAmount = double.tryParse(_amountController.text) ?? 0;
 
     InputDecoration inputStyle(String label) {
       return InputDecoration(
@@ -86,7 +86,7 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
         filled: true,
         fillColor: Colors.grey[100],
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
         ),
       );
@@ -97,7 +97,10 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: const Color(0xFF1ABC9C),
-        title: const Text("Edit Transaksi"),
+        title: const Text(
+          "Edit Transaksi",
+          style: TextStyle(color: Colors.white),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -116,7 +119,11 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
                 children: [
                   Text(
                     "Edit data transaksi",
-                    style: TextStyle(color: Colors.white, fontSize: 18),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ],
               ),
@@ -188,18 +195,22 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
                 gradient: const LinearGradient(
                   colors: [Color(0xFF1ABC9C), Color(0xFF16A085)],
                 ),
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
                 ),
                 onPressed: updateTransaction,
                 child: const Text(
                   "Update Transaksi",
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
