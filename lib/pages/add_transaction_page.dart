@@ -109,7 +109,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       return InputDecoration(
         labelText: label,
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: Theme.of(context).cardColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
@@ -118,7 +118,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F9),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: const Color(0xFF1ABC9C),
@@ -180,7 +180,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 15),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(15),
               ),
               child: DropdownButtonHideUnderline(

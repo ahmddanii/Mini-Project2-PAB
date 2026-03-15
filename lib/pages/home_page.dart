@@ -4,16 +4,20 @@ import '../services/supabase_service.dart';
 import '../models/transaction_model.dart';
 import 'add_transaction_page.dart';
 import 'edit_transaction_page.dart';
+import 'login_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:get/get.dart';
+import '../controllers/theme_controller.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
-
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
   final supabase = SupabaseService.client;
+  final themeController = Get.find<ThemeController>();
 
   List<TransactionModel> transactions = [];
 
@@ -60,7 +64,7 @@ class _HomePageState extends State<HomePage> {
     final saldo = totalIncome - totalExpense;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F9),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: const Color(0xFF1ABC9C),
@@ -72,6 +76,27 @@ class _HomePageState extends State<HomePage> {
             color: Color.fromARGB(221, 255, 255, 255),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.dark_mode),
+            onPressed: () {
+              themeController.toggleTheme();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white, size: 26),
+            onPressed: () async {
+              await Supabase.instance.client.auth.signOut();
+
+              if (!context.mounted) return;
+
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+              );
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -157,7 +182,7 @@ class _HomePageState extends State<HomePage> {
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(15),
                               boxShadow: const [
                                 BoxShadow(
